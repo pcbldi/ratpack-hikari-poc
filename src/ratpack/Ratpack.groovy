@@ -11,6 +11,11 @@ ratpack {
 
   handlers {
     get {
+      DbConfig.wrapInTransaction { txn ->
+	println "inside closure"
+	println txn;
+	println "done";
+      }
       render groovyMarkupTemplate("index.gtpl", title: "My Ratpack App")
     }
 

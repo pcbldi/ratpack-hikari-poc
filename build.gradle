@@ -23,4 +23,5 @@ dependencies {
   runtime 'org.slf4j:slf4j-simple:1.7.12'
       compile 'org.postgresql:postgresql:9.4-1205-jdbc42'
   testCompile "org.spockframework:spock-core:1.0-groovy-2.4"
+  compile 'com.zaxxer:HikariCP:2.4.5'
 }
