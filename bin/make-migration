@@ -1,0 +1,8 @@
+#!/bin/sh
+
+source ./setupenv.sh;
+
+migration_name=$1
+date=$(date +"%Y%m%d%H%M")
+touch "${DOGFISH_MIGRATIONS_DIR}/migrate-${date}-${migration_name}.sql"
+touch "${DOGFISH_MIGRATIONS_DIR}/rollback-${date}-${migration_name}.sql"
