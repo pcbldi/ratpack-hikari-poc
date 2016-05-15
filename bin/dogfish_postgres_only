@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+# vim: ft=sh:ts=2:sw=2:expandtab
+
+# dogfish
+# by Dan Brown <dan@stompydan.net>
+# https://github.com/dwb/dogfish
+#
+# A really simple migration manager for MySQL and PostgreSQL.
+#
+# Copyright (c) 2013, Dan Brown
+# This is licenced under the 3-clause BSD license. See the LICENSE file
+# supplied in this repository for the full text.
+
+VERSION='1.0.0'
+
+DOGFISH_SQL_OPTS=$DOGFISH_SQL_OPTS
+
+set -e # Stop on error
+set -o nounset # Error on using unset vars
+export LS_OPTIONS=
+export PGOPTIONS='--client-min-messages=warning' # hush up psql NOTICEs
+
+bold=`tput bold`
+normal=`tput sgr0`
+
+case ${1-} in
+  "-h" | "--help")
+    exec more -e - <<END
+dogfish v${VERSION}
+by Dan Brown <dan@stompydan.net>
+https://github.com/dwb/dogfish
+
+usage: dogfish action db_name [finish_at_migration]
+
+where action is "migrate" or "rollback"
+      db_name is the name of the database in PostgreSQL
+      finish_at_migration is the (optional) number of the migration to finish
+                          processing after
+
+Commands are sent to the databse using unassuming calls of psql, and pg_dump.
+Either arrange yourself for these tools to pick up the hostname and credentials
+in their standard ways, or set DOGFISH_SQL_OPTS to give these tools the necessary
+command-line options.
+
+The SQL scripts themselves are named "migrate-version-name.sql" or
+"rollback-version-name.sql", where version is the numeric version number
+(usually an ISO YMDHms timestamp, without punctuation), and name is whatever
+you want. If you don't provide a rollback script for a particular version, no
+complaining will happen. You can also provide a rollback script with no migrate
+companion if you're feeling really wild. If you can't work out what I'm on
+about, look in the test_template directory for some good clues.
+
+A dump of just the schema will be made in the migrations directory, under
+the convenient name "schema.sql".
+END
+    ;;
+  "-v" | "--version")
+    echo $VERSION
+    exit
+    ;;
+esac
+
+action=${1-}; shift || true
+db_name=${1-}; shift || true
+finish_at_version=${1-}; shift || true
+schema_migrations_table=schema_migrations
+migration_id_column=migration_id
+migrations_dir=migrations
+bq="\`" # This might look a bit silly, but vim syntax colouring messes up
+        # when using backquotes in heredocs. It was annoying me.
+
+### General functions
+
+function inform() {
+  echo $*
+}
+
+function die() {
+  echo -e $* >&2
+  exit 1
+}
+
+function find_dir_by_pattern() {
+  find . -type d -maxdepth 1 | grep -m1 "^\./$1\$" || true
+}
+
+function available_migrations_to_scripts() {
+  set -e
+  pushd "${migrations_dir}" >/dev/null
+  ls | sed -ne "s/^${action}-\([[:digit:]]\{1,\}\)[-a-z]*\.sql$/\1 &/p"
+  popd >/dev/null
+}
+
+function available_migrations() {
+  available_migrations_to_scripts | awk '{print $1}'
+}
+
+function available_migration_script_for_id() {
+  available_migrations_to_scripts | egrep -m1 "^$1\>" | awk '{print $2}'
+}
+
+function migrations_to_apply() {
+  local comm_cols="-13"
+  [[ $action == "rollback" ]] && comm_cols="-12"
+  comm ${comm_cols} <(applied_migrations) <(available_migrations)
+}
+
+function truncate_migrations_if_requested() {
+  if [[ -n $finish_at_version ]]; then
+    sed -e "/^${finish_at_version}\$/q"
+  else
+    tee
+  fi
+}
+
+### Generic db interfaces
+
+function db_exec() {
+  pg_db_exec
+  return $?
+}
+
+function create_schema_migrations_table() {
+  pg_create_schema_migrations_table
+  return $?
+}
+
+function db_schema_dump() {
+  pg_db_schema_dump
+  return $?
+}
+
+function applied_migrations() {
+  set -e
+  pg_applied_migrations
+  return $?
+}
+
+function apply_migration_id() {
+  if [[ $action == "migrate" ]]; then
+    inform -n "${bold}Migrating to $(available_migration_script_for_id $1)...${normal}"
+  else
+    inform -n "${bold}Rolling back $(available_migration_script_for_id $1)...${normal}"
+  fi
+  echo ""
+  echo "$(< ${migrations_dir}/$(available_migration_script_for_id $1))"
+  echo ""
+  pg_apply_migration_id $*
+  local result=$?
+  [[ $result -eq 0 ]] && inform done.
+  return $result
+}
+
+### PostgreSQL interface
+
+function pg_db_exec() {
+  psql ${DOGFISH_SQL_OPTS} -qtA $db_name
+}
+
+function pg_create_schema_migrations_table() {
+  db_exec <<END
+  CREATE TABLE IF NOT EXISTS "${schema_migrations_table}" (
+    "${migration_id_column}" VARCHAR(128) PRIMARY KEY NOT NULL
+  );
+END
+}
+
+function pg_db_schema_dump() {
+  pg_dump ${DOGFISH_SQL_OPTS} --schema-only --no-acl --no-owner "${db_name}"
+}
+
+function pg_applied_migrations() {
+  db_exec <<END
+SELECT ${migration_id_column} FROM ${schema_migrations_table}
+  ORDER BY ${migration_id_column} ASC;
+END
+}
+
+function pg_post_apply_sql() {
+  if [[ $action == "migrate" ]]; then
+    echo "INSERT INTO \"${schema_migrations_table}\"
+      (\"${migration_id_column}\") VALUES ('$1');"
+  else
+    echo "DELETE FROM \"${schema_migrations_table}\"
+      WHERE \"${migration_id_column}\" = '$1';"
+  fi
+}
+
+function pg_apply_migration_id() {
+  db_exec <<END
+START TRANSACTION;
+$(< ${migrations_dir}/$(available_migration_script_for_id $1))
+
+$(pg_post_apply_sql $1)
+COMMIT;
+END
+  return $?
+}
+
+### Preflight checks
+
+if [[ -z $action ]]; then
+  die "Action not given. Use one of:\n
+  dogfish migrate\n
+  dogfish rollback"
+fi
+
+if [[ -z $db_name ]]; then
+  die "Database name not given"
+fi
+
+if ! [[ -d ${migrations_dir} ]]; then
+  die "Migrations directory ${migrations_dir} not found"
+fi
+
+echo $action
+echo $db_name
+echo $migrations_dir
+
+create_schema_migrations_table
+
+if [[ -n $finish_at_version ]] && ! migrations_to_apply | grep -q "^${finish_at_version}\$"; then
+  die "Migration ${finish_at_version} would not have been reached"
+fi
+
+### Let's actually do some stuff
+
+
+sort_dir=""
+[[ $action == "rollback" ]] && sort_dir="-r"
+
+for migration_id in $(migrations_to_apply | sort ${sort_dir} | truncate_migrations_if_requested); do
+  apply_migration_id $migration_id
+done
+
+db_schema_dump > "${migrations_dir}/schema.sql"

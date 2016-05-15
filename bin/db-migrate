@@ -1,0 +1,4 @@
+#!/bin/sh
+#
+source ./setupenv.sh;
+bin/dogfish_postgres_only migrate ${DB_NAME}
