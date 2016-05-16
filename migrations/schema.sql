@@ -40,7 +40,9 @@ CREATE TABLE member (
     bio text,
     email character varying(50),
     mobile character varying(30) NOT NULL,
-    join_date timestamp without time zone DEFAULT now()
+    join_date timestamp without time zone DEFAULT now(),
+    password character varying(100),
+    metadata json
 );
 
 
@@ -64,6 +66,38 @@ ALTER SEQUENCE member_id_seq OWNED BY member.id;
 
 
 --
+-- Name: role; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE role (
+    id integer NOT NULL,
+    name character varying(30) NOT NULL,
+    title character varying(30) NOT NULL,
+    permissions text,
+    metadata json
+);
+
+
+--
+-- Name: role_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE role_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: role_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE role_id_seq OWNED BY role.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -77,6 +111,13 @@ CREATE TABLE schema_migrations (
 --
 
 ALTER TABLE ONLY member ALTER COLUMN id SET DEFAULT nextval('member_id_seq'::regclass);
+
+
+--
+-- Name: id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY role ALTER COLUMN id SET DEFAULT nextval('role_id_seq'::regclass);
 
 
 --
@@ -101,6 +142,22 @@ ALTER TABLE ONLY member
 
 ALTER TABLE ONLY member
     ADD CONSTRAINT member_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: role_name_key; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY role
+    ADD CONSTRAINT role_name_key UNIQUE (name);
+
+
+--
+-- Name: role_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY role
+    ADD CONSTRAINT role_pkey PRIMARY KEY (id);
 
 
 --
