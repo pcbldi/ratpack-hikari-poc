@@ -1,9 +1,10 @@
-import ratpack.groovy.template.MarkupTemplateModule
-
-import static ratpack.groovy.Groovy.groovyMarkupTemplate
 import static ratpack.groovy.Groovy.ratpack
-import db.DbConfig
+import handlers.*
 
 ratpack {
-
+  handlers {
+    prefix("books"){
+      handler chain(registry.get(MemberActions))
+    }
+  }
 }
