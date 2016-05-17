@@ -2,23 +2,18 @@ package handlers;
 
 import ratpack.handling.Chain;
 import ratpack.func.Action;
+import ratpack.groovy.handling.GroovyChainAction
 
-class MemberActions implements Action<Chain> {
+class MemberActions extends GroovyChainAction{
   @Override
-  void execute(Chain chain) throws Exception {
-    Groovy.chain(chain) {
-      handler() {
-	prefix(":id") {
-	  byMethod {
-	    get() {}
-	    put() {}
-	    delete() {}
-	  }
+  void execute() throws Exception {
+    path(":id") {
+      byMethod {
+	get() {
+	  render "this is ${id}"
 	}
-	byMethod {
-	  get() {}
-	  post() {}
-	}
+	put() {}
+	delete() {}
       }
     }
   }

@@ -4,7 +4,7 @@ import handlers.*
 ratpack {
   handlers {
     prefix("books"){
-      handler chain(registry.get(MemberActions))
+      all chain(new MemberActions())
     }
   }
 }
