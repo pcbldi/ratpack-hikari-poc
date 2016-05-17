@@ -27,12 +27,23 @@ class DbConfig {
 
   static def getConnection (){
     def db = this.getDbObject();
-    new Sql(db.dataSource);
+    def connection = db.dataSource.connection
+    connection.setAutoCommit(false);
+    new Sql(connection)
   }
 
   static def wrapInTransaction(Closure closure){
     def sql= this.getConnection();
-    sql.withTransaction(closure);
+    try{
+      def result=closure(sql);
+      sql.commit();
+      return result;
+    }
+    catch(Exception e){
+      println "Exception----------------E"
+      e.printStackTrace();
+      sql.rollback();
+    }
   }
 
   static def getDbObject(){

@@ -2,7 +2,7 @@ import static ratpack.groovy.Groovy.ratpack
 import handlers.*
 
 ratpack {
-  handlers {
+    handlers {
     prefix("books"){
       all chain(new MemberActions())
     }
