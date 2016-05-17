@@ -31,6 +31,7 @@ class MemberActions extends GroovyChainAction{
 	delete() {}
 	post(){
 	  parse(jsonNode()).then{ body->
+	    //todo: find alternative for json parsing and generation.
 	    ObjectMapper mapper = new ObjectMapper();
 	    Map<String, Object> memberAsMap = mapper.convertValue(body, Map.class);
 	    Map result = createMember(new Member(memberAsMap))
