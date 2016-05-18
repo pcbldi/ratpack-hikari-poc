@@ -2,8 +2,8 @@ package models;
 
 class Member {
 
-  String first_name
-  String last_name
+  String firstName
+  String lastName
   String bio
   String email
   String mobile

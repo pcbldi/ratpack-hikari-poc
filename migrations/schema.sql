@@ -36,7 +36,7 @@ SET default_with_oids = false;
 CREATE TABLE member (
     id bigint NOT NULL,
     first_name character varying(30) NOT NULL,
-    last_name character varying(30) NOT NULL,
+    last_name character varying(30),
     bio text,
     email character varying(50),
     mobile character varying(30) NOT NULL,
