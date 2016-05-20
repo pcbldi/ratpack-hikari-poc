@@ -1,0 +1,5 @@
+#!/bin/sh
+#
+source ./setupenv.sh;
+export DB_NAME="oracle_test";
+bin/dogfish_postgres_only migrate ${DB_NAME}

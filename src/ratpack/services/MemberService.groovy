@@ -13,7 +13,6 @@ class MemberService {
 
   public static Map validateMember(def txn, Member member){
     Long count=Db.read(txn,"Select count(*) from member where email='${member.email}';").flatten().first();
-
     [status:(count==0)]
   }
 
