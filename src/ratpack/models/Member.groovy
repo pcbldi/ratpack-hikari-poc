@@ -12,7 +12,7 @@ class Member {
   long id
 
   String getName(){
-    "{first_name} {last_name}"
+    [firstName,lastName].grep().join(" ")
   }
 
 }
