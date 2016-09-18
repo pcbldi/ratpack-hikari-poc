@@ -13,7 +13,6 @@ class Db {
   }
 
   public static void create(Sql sql, String query){
-    println "QUERY IS __________ ${query}"
     sql.execute(query)
   }
 
